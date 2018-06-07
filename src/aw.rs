@@ -5,30 +5,30 @@ use byteorder::{ByteOrder, LE, WriteBytesExt};
 
 #[derive(Debug, Clone)]
 pub struct Object {
-    type_: i32,
-    id: i32,
-    number: i32,
-    citnum: i32,
-    time: i32,
-    x: i32,
-    y: i32,
-    z: i32,
-    yaw: i16,
-    tilt: i16,
-    roll: i16,
-    name: Vec<u8>,
-    desc: Vec<u8>,
-    action: Vec<u8>,
-    data: Vec<u8>
+    pub type_: i32,
+    pub id: i32,
+    pub number: i32,
+    pub citnum: i32,
+    pub time: i32,
+    pub x: i32,
+    pub y: i32,
+    pub z: i32,
+    pub yaw: i16,
+    pub tilt: i16,
+    pub roll: i16,
+    pub name: Vec<u8>,
+    pub desc: Vec<u8>,
+    pub action: Vec<u8>,
+    pub data: Vec<u8>
 }
 
 #[derive(Debug, Copy, Clone)]
 pub struct Location {
-    cell_x: i16,
-    cell_z: i16,
-    obj_x: i16,
-    obj_y: i32,
-    obj_z: i16
+    pub cell_x: i16,
+    pub cell_z: i16,
+    pub obj_x: i16,
+    pub obj_y: i32,
+    pub obj_z: i16
 }
 
 impl Object {
