@@ -55,6 +55,7 @@ impl<'idx, 'dat> ObjectWriter<'idx, 'dat> {
         LE::write_i16(&mut celldata_key[2..4], cell_x);
         LE::write_i16(&mut celldata_key[4..6], cell_z);
         ctree::insert(&self.idx, &self.dat, &celldata_key, &self.cell_data_buffer)?;
+        self.cell_data_buffer.clear();
         Ok(())
     }
 }
@@ -90,9 +91,9 @@ fn main() -> Result<(), Box<std::error::Error>> {
         data: vec![]
     };
     let mut writer = ObjectWriter::new(&idx, &dat);
-    for i in (1..10) {
+    for i in (0..4) {
         writer.add_object(&my_first_obj)?;
-        my_first_obj.x += 400;
+        my_first_obj.x -= 400;
     }
     
     Ok(())
