@@ -1,9 +1,12 @@
 #[macro_use]
 extern crate lazy_static;
 extern crate libloading as lib;
+extern crate byteorder;
 
-mod ctree;
+pub mod ctree;
 
-fn main() {
-    println!("Hello, world!");
+fn main() -> Result<(), Box<std::error::Error>> {
+    ctree::init()?;
+    ctree::DatFile::open("cell.idx")?;
+    Ok(())
 }
