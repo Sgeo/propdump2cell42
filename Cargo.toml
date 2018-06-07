@@ -1,0 +1,8 @@
+[package]
+name = "aw_make_cache"
+version = "0.1.0"
+authors = ["Sgeo <sgeoster@gmail.com>"]
+
+[dependencies]
+libloading = "0.5.0"
+lazy_static = "1.0.0"
