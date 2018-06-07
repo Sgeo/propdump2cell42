@@ -4,6 +4,7 @@ extern crate libloading as lib;
 extern crate byteorder;
 
 pub mod ctree;
+pub mod aw;
 
 fn main() -> Result<(), Box<std::error::Error>> {
     ctree::init()?;
