@@ -31,6 +31,8 @@ pub struct Location {
     pub obj_z: i16
 }
 
+
+
 impl Object {
     pub fn location(&self) -> Location {
         Location {
@@ -56,6 +58,7 @@ impl Object {
         w.write_i16::<LE>(self.roll)?;
         w.write_u8(self.name.len() as u8)?;
         w.write_u8(self.desc.len() as u8)?;
+        println!("Wrote length to cache: {}", self.desc.len() as u8);
         w.write_u8(self.action.len() as u8)?;
         w.write_u16::<LE>(self.data.len() as u16)?;
         w.write_all(&self.name)?;
