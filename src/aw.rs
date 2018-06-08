@@ -3,7 +3,7 @@ extern crate byteorder;
 use std::io::{self, Write};
 use byteorder::{ByteOrder, LE, WriteBytesExt};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Object {
     pub type_: i32,
     pub id: i32,
