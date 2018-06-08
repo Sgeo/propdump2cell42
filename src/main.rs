@@ -78,11 +78,8 @@ fn main() -> Result<(), failure::Error> {
     ctree::init()?;
     let dat = ctree::DatFile::open("cell.dat")?;
     let idx = ctree::IdxFile::open("cell.idx")?;
-    let filename = match env::args().nth(1) {
-        Some(filename) => filename,
-        None => bail!("Please provide a filename!")
-    };
-    let propdump_file = io::BufReader::new(fs::File::open(filename)?);
+    let stdin = io::stdin();
+    let propdump_file = stdin.lock();
     let propdump = propdump::Propdump::new(propdump_file)?;
     let mut writer = ObjectWriter::new(&idx, &dat);
     for object in propdump {
