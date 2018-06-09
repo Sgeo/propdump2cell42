@@ -80,6 +80,10 @@ fn main() -> Result<(), failure::Error> {
     let idx = ctree::IdxFile::open("cell.idx")?;
     let stdin = io::stdin();
     let propdump_file = stdin.lock();
+    //let propdump = propdump::Propdump::new(propdump_file)?.filter(|obj| {
+    //    let loc = obj.location();
+    //    -100 <= loc.cell_x && loc.cell_x <= 100 && -100 <= loc.cell_z && loc.cell_z <= 100
+    //});
     let propdump = propdump::Propdump::new(propdump_file)?;
     let mut writer = ObjectWriter::new(&idx, &dat);
     for object in propdump {
