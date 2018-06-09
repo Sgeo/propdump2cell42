@@ -87,7 +87,6 @@ fn main() -> Result<(), failure::Error> {
     let propdump = propdump::Propdump::new(propdump_file)?;
     let mut writer = ObjectWriter::new(&idx, &dat);
     for object in propdump {
-        println!("{:?}", object.location());
         writer.add_object(&object)?;
     }
     

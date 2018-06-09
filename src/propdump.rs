@@ -89,7 +89,6 @@ impl<R: BufRead> Iterator for Propdump<R> {
         }
         let namelen: usize = self.file.read_item().expect("Fatal error reading propdump");
         let desclen: usize = self.file.read_item().expect("Fatal error reading propdump");
-        println!("desclen: {}", desclen);
         let actionlen: usize = self.file.read_item().expect("Fatal error reading propdump");
         let datalen: usize = if self.v4 {
             self.file.read_item().expect("Fatal error reading propdump")
