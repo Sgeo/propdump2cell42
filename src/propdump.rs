@@ -84,12 +84,13 @@ impl<R: BufRead> Iterator for Propdump<R> {
         object.desc = vec![0; desclen];
         println!("{:?}", object.desc);
         object.action = vec![0; actionlen];
-        object.data = vec![0; datalen];
+        let mut hexdata = vec![0; datalen * 2];
         self.file.read_exact(&mut object.name).expect("Fatal error reading propdump");
         let written = self.file.read_exact(&mut object.desc).expect("Fatal error reading propdump");
         println!("Len of slice: {}", (&mut object.desc).len());
         self.file.read_exact(&mut object.action).expect("Fatal error reading propdump");
-        self.file.read_exact(&mut object.data).expect("Fatal error reading propdump");
+        self.file.read_exact(&mut hexdata).expect("Fatal error reading propdump");
+        object.data = hexdata.chunks(2).map(String::from_utf8_lossy).map(|digits| u8::from_str_radix(&digits, 16).expect("Unable to parse hex digits in data")).collect();
         let _nl = self.file.read_exact(&mut [0u8; 2]); // Read past newline
         Some(object)
     }
