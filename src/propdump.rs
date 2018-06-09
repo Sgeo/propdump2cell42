@@ -30,6 +30,22 @@ impl<R: BufRead> BufReadHelpers for R {
     }
 }
 
+fn restore_newlines(buffer: &mut [u8]) {
+    if buffer.len() >= 2 {
+        for i in 0..(buffer.len()-2) {
+            if buffer[i+1] == b'\x7F' {
+                buffer[i+1] = b'\n';
+                if buffer[i] == b'\x80' {
+                    buffer[i] = b'\r';
+                }
+            }
+        }
+    }
+    if buffer.len() > 0 && buffer[0] == b'\x7F' {
+        buffer[0] = b'\n';
+    }
+}
+
 #[derive(Debug)]
 pub struct Propdump<R: BufRead> {
     file: R,
@@ -82,13 +98,13 @@ impl<R: BufRead> Iterator for Propdump<R> {
         };
         object.name = vec![0; namelen];
         object.desc = vec![0; desclen];
-        println!("{:?}", object.desc);
         object.action = vec![0; actionlen];
         let mut hexdata = vec![0; datalen * 2];
         self.file.read_exact(&mut object.name).expect("Fatal error reading propdump");
         let written = self.file.read_exact(&mut object.desc).expect("Fatal error reading propdump");
-        println!("Len of slice: {}", (&mut object.desc).len());
+        restore_newlines(&mut object.desc);
         self.file.read_exact(&mut object.action).expect("Fatal error reading propdump");
+        restore_newlines(&mut object.action);
         self.file.read_exact(&mut hexdata).expect("Fatal error reading propdump");
         object.data = hexdata.chunks(2).map(String::from_utf8_lossy).map(|digits| u8::from_str_radix(&digits, 16).expect("Unable to parse hex digits in data")).collect();
         let _nl = self.file.read_exact(&mut [0u8; 2]); // Read past newline
