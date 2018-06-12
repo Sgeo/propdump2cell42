@@ -32,7 +32,7 @@ impl<R: BufRead> BufReadHelpers for R {
 
 fn restore_newlines(buffer: &mut [u8]) {
     if buffer.len() >= 2 {
-        for i in 0..(buffer.len()-2) {
+        for i in 0..(buffer.len()-1) {
             if buffer[i+1] == b'\x7F' {
                 buffer[i+1] = b'\n';
                 if buffer[i] == b'\x80' {
