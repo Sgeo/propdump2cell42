@@ -2,13 +2,17 @@
 extern crate lazy_static;
 extern crate libloading as lib;
 extern crate byteorder;
+extern crate ctrlc;
 #[macro_use] extern crate failure;
 
 use byteorder::{ByteOrder, LE};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 mod ctree;
 mod aw;
 mod propdump;
+
+static RUNNING: AtomicBool = AtomicBool::new(true);
 
 #[derive(Debug)]
 /// Cannot (yet) rewrite already written cells
@@ -73,6 +77,10 @@ fn main() -> Result<(), failure::Error> {
     use std::fs;
     use std::io;
     use std::env;
+    ctrlc::set_handler(move || {
+        println!("Received Ctrl-C");
+        RUNNING.store(false, Ordering::SeqCst);
+    })?;
     fs::copy("blank42.dat", "cell.dat")?;
     fs::copy("blank42.idx", "cell.idx")?;
     ctree::init()?;
@@ -87,6 +95,10 @@ fn main() -> Result<(), failure::Error> {
     let propdump = propdump::Propdump::new(propdump_file)?;
     let mut writer = ObjectWriter::new(&idx, &dat);
     for object in propdump {
+        if !RUNNING.load(Ordering::SeqCst) {
+            println!("Quitting due to Ctrl-C");
+            break;
+        }
         writer.add_object(&object)?;
     }
     
