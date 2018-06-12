@@ -69,7 +69,10 @@ impl<'idx, 'dat> ObjectWriter<'idx, 'dat> {
 
 impl<'idx, 'dat> Drop for ObjectWriter<'idx, 'dat> {
     fn drop(&mut self) {
-        self.write_current_cell().unwrap();
+        let result = self.write_current_cell();
+        if result.is_err() {
+            println!("Unable to write final cell!");
+        }
     }
 }
 
