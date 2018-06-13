@@ -27,11 +27,17 @@ lazy_static! {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct Error(i16);
+pub enum Error {
+    CTree(i16),
+    OutOfSpace
+}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "C-Tree error: {}", self.0)
+        match self {
+            Error::CTree(num) => write!(f, "C-Tree error: {}", num),
+            Error::OutOfSpace => write!(f, "Hit 2GB AW limit")
+        }
     }
 }
 
@@ -45,7 +51,7 @@ fn error(errcode: i16) -> Result<(), Error> {
     if errcode == 0 {
         Ok(())
     } else {
-        Err(Error(errcode))
+        Err(Error::CTree(errcode))
     }
 }
 
@@ -67,7 +73,7 @@ impl DatFile {
     pub fn open<S: Into<Vec<u8>>>(filename: S) -> Result<Self, Error> {
         let filenum = unsafe { AvailableFileNbr(1) };
         if filenum == -1 {
-            return Err(Error(-1));
+            return Err(Error::CTree(-1));
         }
         let filename = CString::new(filename).unwrap();
         let result = unsafe { OpenCtFile(filenum, filename.as_ptr(), 0) };
@@ -78,8 +84,13 @@ impl DatFile {
         let result = unsafe {
             NewVData(self.0, len)
         };
-        if result == 0 {
-            Err(Error(0)) // Looks weird
+        if result == 0 || result > (i32::max_value() - 22000) {
+            if result != 0 {
+                self.release_v_data(&DatAddr(result));
+                Err(Error::OutOfSpace)
+            } else {
+                Err(Error::CTree(0))
+            }
         } else {
             Ok(DatAddr(result))
         }
@@ -120,7 +131,7 @@ impl IdxFile {
     pub fn open<S: Into<Vec<u8>>>(filename: S) -> Result<Self, Error> {
         let filenum = unsafe { AvailableFileNbr(1) };
         if filenum == -1 {
-            return Err(Error(-1));
+            return Err(Error::CTree(-1));
         }
         let filename = CString::new(filename).unwrap();
         let result = unsafe { OpenCtFile(filenum, filename.as_ptr(), 0) };
