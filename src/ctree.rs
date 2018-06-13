@@ -170,20 +170,23 @@ impl Drop for IdxFile {
     }
 }
 
+
 pub fn insert_or_append(idx: &IdxFile, dat: &DatFile, key: &[u8], data: &[u8]) -> Result<(), Error> {
-    let current_address = idx.get_key(key);
-    if let Some(addr) = current_address {
-        let mut current_data = dat.read_v_data(&addr)?;
-        current_data.extend_from_slice(data);
+    let addr = dat.new_v_data(data.len() as i32)?;
+    dat.write_v_data(&addr, data)?;
+    let add_key_result = idx.add_key(key, &addr);
+    if let Err(Error::CTree(2)) = add_key_result {
         dat.release_v_data(&addr)?;
-        idx.delete_key(key, &addr)?;
-        let new_addr = dat.new_v_data(current_data.len() as i32)?;
-        dat.write_v_data(&new_addr, &current_data)?;
-        idx.add_key(key, &new_addr)?;
-    } else {
-        let addr = dat.new_v_data(data.len() as i32)?;
-        dat.write_v_data(&addr, data)?;
+        let old_addr = idx.get_key(key).ok_or(Error::CTree(0))?;
+        let mut old_data = dat.read_v_data(&old_addr)?;
+        old_data.extend_from_slice(data);
+        dat.release_v_data(&old_addr)?;
+        idx.delete_key(key, &old_addr);
+        let addr = dat.new_v_data(old_data.len() as i32)?;
+        dat.write_v_data(&addr, &old_data)?;
         idx.add_key(key, &addr)?;
+    } else {
+        add_key_result?;
     }
     Ok(())
 }
