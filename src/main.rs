@@ -11,6 +11,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 mod ctree;
 mod aw;
 mod propdump;
+mod teleports;
+
+use teleports::Teleports;
 
 static RUNNING: AtomicBool = AtomicBool::new(true);
 
@@ -84,6 +87,7 @@ fn main() -> Result<(), failure::Error> {
         println!("Received Ctrl-C");
         RUNNING.store(false, Ordering::SeqCst);
     })?;
+    let teleports = Teleports::from_file("teleport.txt", 100)?;
     fs::copy("blank42.dat", "cell.dat")?;
     fs::copy("blank42.idx", "cell.idx")?;
     ctree::init()?;
@@ -91,11 +95,10 @@ fn main() -> Result<(), failure::Error> {
     let idx = ctree::IdxFile::open("cell.idx")?;
     let stdin = io::stdin();
     let propdump_file = stdin.lock();
-    //let propdump = propdump::Propdump::new(propdump_file)?.filter(|obj| {
-    //    let loc = obj.location();
-    //    -100 <= loc.cell_x && loc.cell_x <= 100 && -100 <= loc.cell_z && loc.cell_z <= 100
-    //});
-    let propdump = propdump::Propdump::new(propdump_file)?;
+    let propdump = propdump::Propdump::new(propdump_file)?.filter(|obj| {
+        teleports.contains(obj)
+    });
+    //let propdump = propdump::Propdump::new(propdump_file)?;
     let mut writer = ObjectWriter::new(&idx, &dat);
     for object in propdump {
         if !RUNNING.load(Ordering::SeqCst) {
