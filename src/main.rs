@@ -3,10 +3,13 @@ extern crate lazy_static;
 extern crate libloading as lib;
 extern crate byteorder;
 extern crate ctrlc;
+extern crate clap;
 #[macro_use] extern crate failure;
 
 use byteorder::{ByteOrder, LE};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::str::FromStr;
+use clap::{App, Arg};
 
 mod ctree;
 mod aw;
@@ -79,15 +82,61 @@ impl<'idx, 'dat> Drop for ObjectWriter<'idx, 'dat> {
     }
 }
 
+struct Config {
+    teleports: Option<Teleports>,
+    citnums: Option<Vec<i32>>
+}
+
+fn config() -> Result<Config, failure::Error> {
+    let matches = App::new("Propdump to Cell 4.2")
+        .author("Sgeo <sgeoster@gmail.com>")
+        .about("Converts a propdump to Active Worlds 4.2 standalone cache files")
+        .arg(Arg::with_name("teleports")
+             .long("teleports")
+             .short("t")
+             .takes_value(true)
+             .value_name("TELEPORTS")
+             .requires("radius")
+             .help("Specifies a teleport.txt file. Only data in an area near a point in the teleport.txt file will be included"))
+        .arg(Arg::with_name("radius")
+             .long("radius")
+             .short("r")
+             .takes_value(true)
+             .value_name("RADIUS")
+             .requires("teleports")
+             .help("Specify how many coordinates north, west, east, and south of each location in the teleports to include"))
+        .arg(Arg::with_name("citnum")
+             .long("citnum")
+             .short("c")
+             .takes_value(true)
+             .value_name("CITNUMS")
+             .help("Specify one or more citizen numbers to include. If one or more are specified, all other citizen numbers are excluded"))
+         .get_matches();
+    let mut config = Config {
+        teleports: None,
+        citnums: None
+    };
+    println!("{:?}", matches);
+    if let Some(teleport_file_name) = matches.value_of("teleports") {
+        println!("Found teleports");
+        let radius: i16 = i16::from_str(matches.value_of("radius").unwrap())?;
+        config.teleports = Some(Teleports::from_file(teleport_file_name, radius)?);
+    }
+    if let Some(citnums) = matches.values_of("citnum") {
+        println!("Found citnums");
+        config.citnums = Some(citnums.map(i32::from_str).map(Result::unwrap).collect());
+    }
+    Ok(config)
+}
+
 fn main() -> Result<(), failure::Error> {
     use std::fs;
     use std::io;
-    use std::env;
     ctrlc::set_handler(move || {
         println!("Received Ctrl-C");
         RUNNING.store(false, Ordering::SeqCst);
     })?;
-    let teleports = Teleports::from_file("teleport.txt", 100)?;
+    let config = config()?;
     fs::copy("blank42.dat", "cell.dat")?;
     fs::copy("blank42.idx", "cell.idx")?;
     ctree::init()?;
@@ -96,9 +145,18 @@ fn main() -> Result<(), failure::Error> {
     let stdin = io::stdin();
     let propdump_file = stdin.lock();
     let propdump = propdump::Propdump::new(propdump_file)?.filter(|obj| {
-        teleports.contains(obj)
+        if let Some(ref teleports) = config.teleports {
+            if !teleports.contains(obj) {
+                return false;
+            }
+        }
+        if let Some(ref citnums) = config.citnums {
+            if !citnums.contains(&obj.citnum) {
+                return false;
+            }
+        }
+        true
     });
-    //let propdump = propdump::Propdump::new(propdump_file)?;
     let mut writer = ObjectWriter::new(&idx, &dat);
     for object in propdump {
         if !RUNNING.load(Ordering::SeqCst) {

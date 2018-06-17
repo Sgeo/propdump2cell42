@@ -86,7 +86,7 @@ impl DatFile {
         };
         if result == 0 || result > (i32::max_value() - 22000) {
             if result != 0 {
-                self.release_v_data(&DatAddr(result));
+                let _ = self.release_v_data(&DatAddr(result));
                 Err(Error::OutOfSpace)
             } else {
                 Err(Error::CTree(0))
@@ -181,7 +181,7 @@ pub fn insert_or_append(idx: &IdxFile, dat: &DatFile, key: &[u8], data: &[u8]) -
         let mut old_data = dat.read_v_data(&old_addr)?;
         old_data.extend_from_slice(data);
         dat.release_v_data(&old_addr)?;
-        idx.delete_key(key, &old_addr);
+        idx.delete_key(key, &old_addr)?;
         let addr = dat.new_v_data(old_data.len() as i32)?;
         dat.write_v_data(&addr, &old_data)?;
         idx.add_key(key, &addr)?;
