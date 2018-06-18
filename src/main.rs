@@ -116,14 +116,11 @@ fn config() -> Result<Config, failure::Error> {
         teleports: None,
         citnums: None
     };
-    println!("{:?}", matches);
     if let Some(teleport_file_name) = matches.value_of("teleports") {
-        println!("Found teleports");
         let radius: i16 = i16::from_str(matches.value_of("radius").unwrap())?;
         config.teleports = Some(Teleports::from_file(teleport_file_name, radius)?);
     }
     if let Some(citnums) = matches.values_of("citnum") {
-        println!("Found citnums");
         config.citnums = Some(citnums.map(i32::from_str).map(Result::unwrap).collect());
     }
     Ok(config)
