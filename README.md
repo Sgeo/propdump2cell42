@@ -20,7 +20,7 @@ Active Worlds 4.2 can only process cache files that are 2 GB or less in size. Th
 * `-c` or `--citnum`: A list of citnums. The resulting files will only have property by those citnums. E.g.: `"C:\Program Files\7-Zip\7z.exe" x mbsurvey.txt.gz -so | propdump2cell42 -c 1 99` will result in cache files that only contain property owned by citizens 1 and 99.
 * `-t` or `--teleports` and `-r` or `--radius`: If t/teleports is used, r/radius must also be used. These options allow selecting a list of locations and how much area around them to include.
 
-# Example
+### Example
 
 teleport.txt contains the following:
 ```
