@@ -24,6 +24,9 @@ lazy_static! {
     static ref ReadVData: lib::Symbol<'static, unsafe extern "C" fn(i16, i32, *mut u8, i32) -> i16> = unsafe { CT.get(b"_RDVREC\0").unwrap() };
     static ref VDataLength: lib::Symbol<'static, unsafe extern "C" fn(i16, i32) -> i32> = unsafe { CT.get(b"_GTVLEN\0").unwrap() };
     static ref ReleaseVData: lib::Symbol<'static, unsafe extern "C" fn(i16, i32) -> i16> = unsafe { CT.get(b"_RETVREC\0").unwrap() };
+    static ref LoadKey: lib::Symbol<'static, unsafe extern "C" fn(i16, *const u8, i32, i16) -> i16> = unsafe { CT.get(b"_LOADKEY\0").unwrap() };
+    static ref FirstKey: lib::Symbol<'static, unsafe extern "C" fn(i16, *mut u8) -> i32> = unsafe { CT.get(b"_FRSKEY\0").unwrap() };
+    static ref NextKey: lib::Symbol<'static, unsafe extern "C" fn(i16, *mut u8) -> i32> = unsafe { CT.get(b"_NXTKEY\0").unwrap() };
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -160,6 +163,20 @@ impl IdxFile {
             DeleteKey(self.0, key.as_ptr(), addr.0)
         })
     }
+    
+    fn load_key(&self, key: &[u8], addr: &DatAddr, loadtype: i16) -> Result<(), Error> {
+        error(unsafe {
+            LoadKey(self.0, key.as_ptr(), addr.0, loadtype)
+        })
+    }
+    
+    fn load_key_last(&self) -> Result<(), Error> {
+        use std::ptr;
+    
+        error(unsafe {
+            LoadKey(self.0, ptr::null(), 0, 2)
+        })
+    }
 }
 
 impl Drop for IdxFile {
@@ -168,6 +185,119 @@ impl Drop for IdxFile {
             CloseCtFile(self.0, 0)
         }).expect("Unable to correctly close an IdxFile!")
     }
+}
+
+#[derive(Copy, Clone, Debug)]
+enum KeyIter<'idx> {
+    Ongoing(bool, &'idx IdxFile, usize),
+    Finished
+}
+
+impl<'idx> KeyIter<'idx> {
+    fn new(file: &'idx IdxFile, keysize: usize) -> Self {
+        KeyIter::Ongoing(false, file, keysize)
+    }
+}
+
+impl<'idx> Iterator for KeyIter<'idx> {
+    type Item = (Vec<u8>, DatAddr);
+    
+    fn next(&mut self) -> Option<Self::Item> {
+        match *self {
+            KeyIter::Ongoing(started, file, keysize) => {
+                let mut data = vec![0; keysize];
+                let addr = if started {
+                    unsafe {
+                        NextKey(file.0, (&mut data).as_mut_ptr())
+                    }
+                } else {
+                    unsafe {
+                        FirstKey(file.0, (&mut data).as_mut_ptr())
+                    }
+                };
+                if addr == 0 {
+                    *self = KeyIter::Finished;
+                    return None
+                } else {
+                    *self = KeyIter::Ongoing(true, file, keysize);
+                }
+                Some((data, DatAddr(addr)))
+            },
+            KeyIter::Finished => None
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct KeyLoader<'idx, 'dat> {
+    to_add: Vec<(Vec<u8>, DatAddr)>,
+    loaded_first: bool,
+    idx: &'idx mut IdxFile,
+    dat: &'dat mut DatFile
+}
+
+impl<'idx, 'dat> KeyLoader<'idx, 'dat> {
+    pub fn new(idx: &'idx mut IdxFile, dat: &'dat mut DatFile) -> Result<Self, Error> {
+        let mut this = KeyLoader {
+            to_add: Vec::new(),
+            loaded_first: false,
+            idx: idx,
+            dat: dat,
+        };
+        {
+            let current_keys = KeyIter::new(&this.idx, 6);
+            for (key, addr) in current_keys {
+                this.idx.delete_key(&key, &addr)?;
+                this.to_add.push((key, addr));
+            }
+        }
+        Ok(this)
+    }
+    
+    pub fn insert(&mut self, key: &[u8], data: &[u8]) -> Result<(), Error> {
+        let loadtype = if !self.loaded_first { 0 } else { 1 };
+        let addr = self.dat.new_v_data(data.len() as i32)?;
+        self.dat.write_v_data(&addr, data)?;
+        let result = self.idx.load_key(key, &addr, loadtype);
+        if let Err(Error::CTree(59)) = result {
+            use std::borrow::ToOwned;
+            
+            self.to_add.push((key.to_owned(), addr.clone()));
+            Ok(())
+        } else {
+            self.loaded_first = true;
+            result
+        }
+    }
+}
+
+impl<'idx, 'dat> Drop for KeyLoader<'idx, 'dat> {
+    fn drop(&mut self) {
+        self.idx.load_key_last().expect("Unable to finalize LoadKey!");
+        println!("Need to add {} keys after all LoadKeys", self.to_add.len());
+        for (key, addr) in &self.to_add {
+            insert_key(&self.idx, &self.dat, &key, &addr).expect("Unable to add unloadable key!");
+        }
+    }
+}
+
+fn insert_key(idx: &IdxFile, dat: &DatFile, key: &[u8], addr: &DatAddr) -> Result<(), Error> {
+    let add_key_result = idx.add_key(key, addr);
+    if let Err(Error::CTree(2)) = add_key_result {
+        let old_addr = idx.get_key(key).ok_or(Error::CTree(0))?;
+        let mut old_data = dat.read_v_data(&old_addr)?;
+        let new_data = dat.read_v_data(addr)?;
+        dat.release_v_data(addr)?;
+        old_data.extend_from_slice(&new_data);
+        dat.release_v_data(&old_addr)?;
+        idx.delete_key(key, &old_addr)?;
+        let addr = dat.new_v_data(old_data.len() as i32)?;
+        dat.write_v_data(&addr, &old_data)?;
+        idx.add_key(key, &addr)?;
+    } else {
+        add_key_result?;
+    }
+    Ok(())
 }
 
 

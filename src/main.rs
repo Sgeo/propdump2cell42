@@ -24,19 +24,17 @@ static RUNNING: AtomicBool = AtomicBool::new(true);
 /// Cannot (yet) rewrite already written cells
 struct ObjectWriter<'idx, 'dat> {
     cell: Option<(i16, i16)>,
-    idx: &'idx ctree::IdxFile,
-    dat: &'dat ctree::DatFile,
+    loader: ctree::KeyLoader<'idx, 'dat>,
     cell_data_buffer: Vec<u8>
 }
 
 impl<'idx, 'dat> ObjectWriter<'idx, 'dat> {
-    pub fn new(idx: &'idx ctree::IdxFile, dat: &'dat ctree::DatFile) -> Self {
-        ObjectWriter {
+    pub fn new(idx: &'idx mut ctree::IdxFile, dat: &'dat mut ctree::DatFile) -> Result<Self, failure::Error> {
+        Ok(ObjectWriter {
             cell: None,
-            idx: idx,
-            dat: dat,
+            loader: ctree::KeyLoader::new(idx, dat)?,
             cell_data_buffer: vec![]
-        }
+        })
     }
 
     pub fn add_object(&mut self, object: &aw::Object) -> Result<(), failure::Error> {
@@ -67,7 +65,7 @@ impl<'idx, 'dat> ObjectWriter<'idx, 'dat> {
         LE::write_u16(&mut celldata_key[0..2], 1);
         LE::write_i16(&mut celldata_key[2..4], cell_x);
         LE::write_i16(&mut celldata_key[4..6], cell_z);
-        ctree::insert_or_append(&self.idx, &self.dat, &celldata_key, &self.cell_data_buffer)?;
+        self.loader.insert(&celldata_key, &self.cell_data_buffer)?;
         self.cell_data_buffer.clear();
         Ok(())
     }
@@ -140,8 +138,8 @@ fn main() -> Result<(), failure::Error> {
     fs::copy("blank42.dat", "cell.dat")?;
     fs::copy("blank42.idx", "cell.idx")?;
     ctree::init()?;
-    let dat = ctree::DatFile::open("cell.dat")?;
-    let idx = ctree::IdxFile::open("cell.idx")?;
+    let mut dat = ctree::DatFile::open("cell.dat")?;
+    let mut idx = ctree::IdxFile::open("cell.idx")?;
     let stdin = io::stdin();
     let propdump_file = stdin.lock();
     let propdump = propdump::Propdump::new(propdump_file)?.filter(|obj| {
@@ -157,7 +155,7 @@ fn main() -> Result<(), failure::Error> {
         }
         true
     });
-    let mut writer = ObjectWriter::new(&idx, &dat);
+    let mut writer = ObjectWriter::new(&mut idx, &mut dat)?;
     for object in propdump {
         if !RUNNING.load(Ordering::SeqCst) {
             println!("Quitting due to Ctrl-C");
