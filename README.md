@@ -28,7 +28,7 @@ AW 0N 0W
 AW 2222S 2222E
 ```
 
-The command `"C:\Program Files\7-Zip\7z.exe" x mbsurvey.txt.gz -so | propdump2cell42 -t teleport.txt -r 100` will result in cache files that contain 100S 100E thru 100N 100W and 2322S 2322E thru 2122S 2122E.
+The command `"C:\Program Files\7-Zip\7z.exe" x mbsurvey.txt.gz -so | propdump2cell42 -t teleport.txt -r 100` will result in cache files that contain 100S 100E thru 100N 100W and 2322S 2322E thru 2122S 2122E, assuming that all property contained fits within 2GB.
 
 
 ## Build notes
