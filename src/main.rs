@@ -160,7 +160,19 @@ fn main() -> Result<(), failure::Error> {
             println!("Quitting due to Ctrl-C");
             break;
         }
-        writer.add_object(&object)?;
+        //writer.add_object(&object)?;
+        let utf8 = std::str::from_utf8(&object.desc);
+        match utf8 {
+            Err(err) => {
+                println!("Found non-UTF8 object: {:X?}", object);
+                println!("UTF-8 Error: {:?}", err);
+                let readable: String = object.desc.iter().map(|&c| c as char).collect();
+                println!("Description: {}", readable);
+            },
+            Ok(utf8) => {
+                
+            }
+        };
     }
     
     Ok(())
