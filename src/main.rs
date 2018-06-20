@@ -4,12 +4,15 @@ extern crate libloading as lib;
 extern crate byteorder;
 extern crate ctrlc;
 extern crate clap;
+extern crate encoding;
 #[macro_use] extern crate failure;
 
 use byteorder::{ByteOrder, LE};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::str::FromStr;
 use clap::{App, Arg};
+use encoding::{Encoding, DecoderTrap};
+use encoding::all::WINDOWS_1252;
 
 mod ctree;
 mod aw;
@@ -166,8 +169,8 @@ fn main() -> Result<(), failure::Error> {
             Err(err) => {
                 println!("Found non-UTF8 object: {:X?}", object);
                 println!("UTF-8 Error: {:?}", err);
-                let readable: String = object.desc.iter().map(|&c| c as char).collect();
-                println!("Description: {}", readable);
+                let readable = WINDOWS_1252.decode(&object.desc, DecoderTrap::Strict);
+                println!("Description: {:?}", readable);
             },
             Ok(utf8) => {
                 
