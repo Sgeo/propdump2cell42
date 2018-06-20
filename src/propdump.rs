@@ -33,16 +33,25 @@ impl<R: BufRead> BufReadHelpers for R {
 fn restore_newlines(buffer: &mut [u8]) {
     if buffer.len() >= 2 {
         for i in 0..(buffer.len()-1) {
+            if buffer[i] == b'\r' && buffer[i+1] == b'\n' {
+                println!("Preexisting Windows newline detected: {:?}", buffer);
+            }
+            if buffer[i] == b'\r' {
+                println!("\\r detected: {:?}", String::from_utf8_lossy(&buffer));
+            }
+            if buffer[i] == b'\n' {
+                println!("\\n detected: {:?}", String::from_utf8_lossy(&buffer));
+            }
             if buffer[i+1] == b'\x7F' {
-                buffer[i+1] = b'\n';
+                //buffer[i+1] = b'\n';
                 if buffer[i] == b'\x80' {
-                    buffer[i] = b'\r';
+                    //buffer[i] = b'\r';
                 }
             }
         }
     }
     if buffer.len() > 0 && buffer[0] == b'\x7F' {
-        buffer[0] = b'\n';
+        //buffer[0] = b'\n';
     }
 }
 

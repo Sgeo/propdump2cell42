@@ -164,18 +164,18 @@ fn main() -> Result<(), failure::Error> {
             break;
         }
         //writer.add_object(&object)?;
-        let utf8 = std::str::from_utf8(&object.desc);
-        match utf8 {
-            Err(err) => {
-                println!("Found non-UTF8 object: {:X?}", object);
-                println!("UTF-8 Error: {:?}", err);
-                let readable = WINDOWS_1252.decode(&object.desc, DecoderTrap::Strict);
-                println!("Description: {:?}", readable);
-            },
-            Ok(utf8) => {
-                
-            }
-        };
+        //let utf8 = std::str::from_utf8(&object.desc);
+        //match utf8 {
+        //    Err(err) => {
+        //        println!("Found non-UTF8 object: {:X?}", object);
+        //        println!("UTF-8 Error: {:?}", err);
+        //        let readable = WINDOWS_1252.decode(&object.desc, DecoderTrap::Strict);
+        //        println!("Description: {:?}", readable);
+        //    },
+        //    Ok(utf8) => {
+        //        
+        //    }
+        //};
     }
     
     Ok(())
