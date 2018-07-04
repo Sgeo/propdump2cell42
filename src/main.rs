@@ -154,7 +154,7 @@ fn main() -> Result<(), failure::Error> {
         println!("Received Ctrl-C");
         RUNNING.store(false, Ordering::SeqCst);
     })?;
-    let config = config()?;
+    let mut config = config()?;
     fs::copy("blank42.dat", "cell.dat")?;
     fs::copy("blank42.idx", "cell.idx")?;
     ctree::init()?;
@@ -172,6 +172,9 @@ fn main() -> Result<(), failure::Error> {
             if !citnums.contains(&obj.citnum) {
                 return false;
             }
+        }
+        if let Some(ref mut teleport_appender) = config.teleport_appender {
+            teleport_appender.check_to_append(&obj).expect("Unable to append to teleport append");
         }
         true
     });
