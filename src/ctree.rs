@@ -24,19 +24,22 @@ lazy_static! {
     static ref ReadVData: lib::Symbol<'static, unsafe extern "C" fn(i16, i32, *mut u8, i32) -> i16> = unsafe { CT.get(b"_RDVREC\0").unwrap() };
     static ref VDataLength: lib::Symbol<'static, unsafe extern "C" fn(i16, i32) -> i32> = unsafe { CT.get(b"_GTVLEN\0").unwrap() };
     static ref ReleaseVData: lib::Symbol<'static, unsafe extern "C" fn(i16, i32) -> i16> = unsafe { CT.get(b"_RETVREC\0").unwrap() };
+    static ref GetCtFileInfo: lib::Symbol<'static, unsafe extern "C" fn(i16, i16) -> i32> = unsafe { CT.get(b"_GETFIL\0").unwrap() };
 }
 
 #[derive(Copy, Clone, Debug)]
 pub enum Error {
     CTree(i16),
-    OutOfSpace
+    OutOfSpace,
+    BadKeyLength
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Error::CTree(num) => write!(f, "C-Tree error: {}", num),
-            Error::OutOfSpace => write!(f, "Hit 2GB AW limit")
+            Error::OutOfSpace => write!(f, "Hit 2GB AW limit"),
+            Error::BadKeyLength => write!(f, "Incorrectly sized key used"),
         }
     }
 }
@@ -67,7 +70,7 @@ pub struct DatAddr(i32);
 #[derive(Debug)]
 pub struct DatFile(i16);
 #[derive(Debug)]
-pub struct IdxFile(i16);
+pub struct IdxFile(i16, usize);
 
 impl DatFile {
     pub fn open<S: Into<Vec<u8>>>(filename: S) -> Result<Self, Error> {
@@ -135,16 +138,31 @@ impl IdxFile {
         }
         let filename = CString::new(filename).unwrap();
         let result = unsafe { OpenCtFile(filenum, filename.as_ptr(), 0) };
-        error(result).map(|_| IdxFile(filenum))
+        error(result).map(|_| { 
+            let keylen = unsafe {
+                GetCtFileInfo(filenum, 1)
+            };
+            IdxFile(filenum, keylen as usize)
+        })
+    }
+    
+    fn check_key(&self, key: &[u8]) -> Result<(), Error> {
+        if key.len() == self.1 {
+            Ok(())
+        } else {
+            Err(Error::BadKeyLength)
+        }
     }
     
     fn add_key(&self, key: &[u8], dataddr: &DatAddr) -> Result<(), Error> {
+        self.check_key(key)?;
         error(unsafe {
             AddKey(self.0, key.as_ptr(), dataddr.0, 0)
         })
     }
     
     fn get_key(&self, key: &[u8]) -> Option<DatAddr> {
+        self.check_key(key).unwrap();
         let num_addr = unsafe {
             GetKey(self.0, key.as_ptr())
         };
@@ -156,6 +174,7 @@ impl IdxFile {
     }
     
     fn delete_key(&self, key: &[u8], addr: &DatAddr) -> Result<(), Error> {
+        self.check_key(key)?;
         error(unsafe {
             DeleteKey(self.0, key.as_ptr(), addr.0)
         })
