@@ -41,7 +41,8 @@ impl Teleports {
         
         for line in buffer.lines() {
             let mut line = line?;
-            let mut data = line.split(' ');
+            let mut coords = line.split(':').next().expect("Unable to split on : in teleport fille!");
+            let mut data = coords.split(' ');
             let _world = data.next();
             let ns = data.next();
             let ew = data.next();
