@@ -2,6 +2,7 @@ extern crate byteorder;
 
 use std::io::{self, Write};
 use byteorder::{ByteOrder, LE, WriteBytesExt};
+use encoding::{all::WINDOWS_1252, Encoding, EncoderTrap};
 
 #[derive(Debug, Clone, Default)]
 pub struct Object {
@@ -16,9 +17,9 @@ pub struct Object {
     pub yaw: i16,
     pub tilt: i16,
     pub roll: i16,
-    pub name: Vec<u8>,
-    pub desc: Vec<u8>,
-    pub action: Vec<u8>,
+    pub name: String,
+    pub desc: String,
+    pub action: String,
     pub data: Vec<u8>
 }
 
@@ -60,9 +61,9 @@ impl Object {
         w.write_u8(self.desc.len() as u8)?;
         w.write_u8(self.action.len() as u8)?;
         w.write_u16::<LE>(self.data.len() as u16)?;
-        w.write_all(&self.name)?;
-        w.write_all(&self.desc)?;
-        w.write_all(&self.action)?;
+        w.write_all(&WINDOWS_1252.encode(&self.name, EncoderTrap::Replace).unwrap())?;
+        w.write_all(&WINDOWS_1252.encode(&self.desc, EncoderTrap::Replace).unwrap())?;
+        w.write_all(&WINDOWS_1252.encode(&self.action, EncoderTrap::Replace).unwrap())?;
         w.write_all(&self.data)?;
         Ok(())
     } 

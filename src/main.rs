@@ -4,6 +4,7 @@ extern crate libloading as lib;
 extern crate byteorder;
 extern crate ctrlc;
 extern crate clap;
+extern crate encoding;
 #[macro_use] extern crate failure;
 
 use byteorder::{ByteOrder, LE};
