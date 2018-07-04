@@ -5,6 +5,7 @@ extern crate byteorder;
 extern crate ctrlc;
 extern crate clap;
 extern crate encoding;
+extern crate regex;
 #[macro_use] extern crate failure;
 
 use byteorder::{ByteOrder, LE};

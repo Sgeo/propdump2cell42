@@ -1,5 +1,8 @@
 use failure;
 use aw::Object;
+use regex::Regex;
+
+use std::io::Write;
 
 pub struct Teleports {
     regions: Vec<((i16, i16), (i16, i16))>
@@ -77,11 +80,22 @@ impl TeleportAppender {
         let file = OpenOptions::new().append(true).open(path)?;
         Ok(TeleportAppender {
             file: file,
-            world: world.as_ref().to_string()
+            world: world.as_ref().to_uppercase()
         })
     }
     
     pub fn check_to_append(&mut self, object: &Object) -> Result<(), failure::Error> {
-        unimplemented!("Teleport appending not implemented yet!");
+        lazy_static! {
+            static ref RE: Regex = Regex::new(r"(?i)\W(teleportx?|warp)\W+((?P<world>\w+)\W+)?(?P<coords>[0-9.]+(n|s)\W+[0-9.]+(e|w))").unwrap();
+        }
+        for capture in RE.captures_iter(&object.action) {
+            if let Some(world) = capture.name("world") {
+                if world.as_str().to_uppercase() != self.world {
+                    continue;
+                }
+            }
+            writeln!(&mut self.file, "{} {}: ZZZFound", &self.world, capture.name("coords").expect("Couldn't find coords in teleport").as_str())?;
+        }
+        Ok(())
     }
 }
