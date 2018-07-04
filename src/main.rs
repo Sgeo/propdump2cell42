@@ -17,7 +17,7 @@ mod aw;
 mod propdump;
 mod teleports;
 
-use teleports::Teleports;
+use teleports::{Teleports, TeleportAppender};
 
 static RUNNING: AtomicBool = AtomicBool::new(true);
 
@@ -85,7 +85,8 @@ impl<'idx, 'dat> Drop for ObjectWriter<'idx, 'dat> {
 
 struct Config {
     teleports: Option<Teleports>,
-    citnums: Option<Vec<i32>>
+    citnums: Option<Vec<i32>>,
+    teleport_appender: Option<TeleportAppender>
 }
 
 fn config() -> Result<Config, failure::Error> {
@@ -112,10 +113,25 @@ fn config() -> Result<Config, failure::Error> {
              .takes_value(true)
              .value_name("CITNUMS")
              .help("Specify one or more citizen numbers to include. If one or more are specified, all other citizen numbers are excluded"))
+         .arg(Arg::with_name("append")
+             .long("append")
+             .short("a")
+             .takes_value(true)
+             .value_name("TELEPORT-APPEND")
+             .requires("world")
+             .help("Specifies looking for teleport/warp coordinates and appending them to this file. Requires a world name"))
+         .arg(Arg::with_name("world")
+             .long("world")
+             .short("w")
+             .takes_value(true)
+             .value_name("WORLD")
+             .requires("append")
+             .help("Specifies a world name when searching for teleports in the propdump. Other worlds will not be included. Does NOT affect the teleports option, which will use all listed teleports regardless of world"))
          .get_matches();
     let mut config = Config {
         teleports: None,
-        citnums: None
+        citnums: None,
+        teleport_appender: None
     };
     if let Some(teleport_file_name) = matches.value_of("teleports") {
         let radius: i16 = i16::from_str(matches.value_of("radius").unwrap())?;
@@ -123,6 +139,10 @@ fn config() -> Result<Config, failure::Error> {
     }
     if let Some(citnums) = matches.values_of("citnum") {
         config.citnums = Some(citnums.map(i32::from_str).map(Result::unwrap).collect());
+    }
+    if let Some(telappend) = matches.value_of("append") {
+        let world = matches.value_of("world").unwrap();
+        config.teleport_appender = Some(TeleportAppender::from_file(telappend, world)?);
     }
     Ok(config)
 }

@@ -66,3 +66,22 @@ impl Teleports {
     }
 }
 
+pub struct TeleportAppender {
+    file: ::std::fs::File,
+    world: String
+}
+
+impl TeleportAppender {
+    pub fn from_file<P: AsRef<::std::path::Path>, S: AsRef<str>>(path: P, world: S) -> Result<Self, failure::Error> {
+        use std::fs::OpenOptions;
+        let file = OpenOptions::new().append(true).open(path)?;
+        Ok(TeleportAppender {
+            file: file,
+            world: world.as_ref().to_string()
+        })
+    }
+    
+    pub fn check_to_append(&mut self, object: &Object) -> Result<(), failure::Error> {
+        unimplemented!("Teleport appending not implemented yet!");
+    }
+}
