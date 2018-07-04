@@ -77,7 +77,7 @@ pub struct TeleportAppender {
 impl TeleportAppender {
     pub fn from_file<P: AsRef<::std::path::Path>, S: AsRef<str>>(path: P, world: S) -> Result<Self, failure::Error> {
         use std::fs::OpenOptions;
-        let file = OpenOptions::new().append(true).open(path)?;
+        let file = OpenOptions::new().create(true).append(true).open(path)?;
         Ok(TeleportAppender {
             file: file,
             world: world.as_ref().to_uppercase()
@@ -86,7 +86,7 @@ impl TeleportAppender {
     
     pub fn check_to_append(&mut self, object: &Object) -> Result<(), failure::Error> {
         lazy_static! {
-            static ref RE: Regex = Regex::new(r"(?i)\W(teleportx?|warp)\W+((?P<world>\w+)\W+)?(?P<coords>[0-9.]+(n|s)\W+[0-9.]+(e|w))").unwrap();
+            static ref RE: Regex = Regex::new(r"(?i)\W(teleportx?|warp)\W+((?P<world>\w+)\W+)?(?P<ns>[0-9.]+(n|s))\W+(?P<ew>[0-9.]+(e|w))").unwrap();
         }
         for capture in RE.captures_iter(&object.action) {
             if let Some(world) = capture.name("world") {
@@ -94,7 +94,9 @@ impl TeleportAppender {
                     continue;
                 }
             }
-            writeln!(&mut self.file, "{} {}: ZZZFound", &self.world, capture.name("coords").expect("Couldn't find coords in teleport").as_str())?;
+            let ns = capture.name("ns").expect("Couldn't find coords in teleport").as_str();
+            let ew = capture.name("ew").expect("Couldn't find coords in teleport").as_str();
+            writeln!(&mut self.file, "{} {} {}: ZZZFound", &self.world, ns, ew)?;
         }
         Ok(())
     }
